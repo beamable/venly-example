@@ -1,0 +1,60 @@
+{
+  "ServiceDefinitions": [
+    {
+      "BeamoId": "VenlyFederation",
+      "Protocol": 0,
+      "DependsOnBeamoIds": [
+        "VenlyFederationStorage"
+      ],
+      "ImageId": "",
+      "ShouldBeEnabledOnRemote": true,
+      "TruncImageId": ""
+    },
+    {
+      "BeamoId": "VenlyFederationStorage",
+      "Protocol": 1,
+      "DependsOnBeamoIds": [],
+      "ImageId": "",
+      "ShouldBeEnabledOnRemote": true,
+      "TruncImageId": ""
+    }
+  ],
+  "HttpMicroserviceLocalProtocols": {
+    "VenlyFederation": {
+      "DockerBuildContextPath": "services",
+      "RelativeDockerfilePath": "VenlyFederation/Dockerfile",
+      "BindSrcForHotReloading": {
+        "IsReadOnly": false,
+        "LocalPath": null,
+        "InContainerPath": null
+      },
+      "HotReloadEnabledEndpoint": null,
+      "HotReloadEnabledPort": null,
+      "CustomPortBindings": [],
+      "CustomBindMounts": [],
+      "CustomVolumes": [],
+      "CustomEnvironmentVariables": [],
+      "InstanceCount": 1
+    }
+  },
+  "HttpMicroserviceRemoteProtocols": {
+    "VenlyFederation": {
+      "HealthCheckEndpoint": "health",
+      "HealthCheckPort": "6565",
+      "CustomEnvironmentVariables": []
+    }
+  },
+  "EmbeddedMongoDbLocalProtocols": {
+    "VenlyFederationStorage": {
+      "BaseImage": "mongo:latest",
+      "RootUsername": "beamable",
+      "RootPassword": "beamable",
+      "MongoLocalPort": "",
+      "DataVolumeInContainerPath": "/data/db",
+      "FilesVolumeInContainerPath": "/beamable"
+    }
+  },
+  "EmbeddedMongoDbRemoteProtocols": {
+    "VenlyFederationStorage": {}
+  }
+}
