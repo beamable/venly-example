@@ -9,7 +9,7 @@ namespace Beamable.VenlyFederation.Features.Minting;
 
 internal static class MetadataConverter
 {
-    public static VyCreateTokenTypeRequest ToCreateTokenTypeRequest(this MintRequest request, BlockchainItem? contentDefinition, string toWalletAddress)
+    public static VyCreateTokenTypeRequest ToCreateTokenTypeRequest(this MintRequest request, BlockchainItem? contentDefinition)
     {
         return new VyCreateTokenTypeRequest
         {
@@ -24,15 +24,7 @@ internal static class MetadataConverter
                     Name = x.Key,
                     Type = eVyTokenAttributeType.Property,
                     Value = x.Value
-                }).ToArray(),
-            Destinations = new[]
-            {
-                new VyTokenDestinationDto
-                {
-                    Address = toWalletAddress,
-                    Amount = (int)request.Amount
-                }
-            }
+                }).ToArray()
         };
     }
     

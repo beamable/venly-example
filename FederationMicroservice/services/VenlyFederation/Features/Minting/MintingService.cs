@@ -45,12 +45,11 @@ public class MintingService : IService
             .Select(x => x.ContentId)
             .ToHashSet();
 
-        var existingMints = (await _mintCollection.GetMintsForContent(await _configuration.DefaultContractName, contentIds))
+        var lastMints = (await _mintCollection.GetLastMintsForContent(await _configuration.DefaultContractName, contentIds))
             .ToDictionary(x => x.ContentId, x => x);
 
         var chainTransactions = new List<string>();
         var newMints = new List<Mint>();
-        var updatedMints = new List<Mint>();
 
         foreach (var request in requests)
         {
@@ -60,69 +59,60 @@ public class MintingService : IService
             var contentDefinition = await _contentService.GetContent(request.ContentId);
             var blockchainItem = contentDefinition as BlockchainItem;
             
-            var existingMint = existingMints.GetValueOrDefault(request.ContentId);
-            if (existingMint is null)
+            var lastMint = lastMints.GetValueOrDefault(request.ContentId);
+            int templateId;
+            if (lastMint is null)
             {
-                // Create the token template and mint
-                var result = await _venlyApiService.CreateTokenTemplate(contract.Id, request.ToCreateTokenTypeRequest(blockchainItem, toWalletAddress));
-
-                newMints.Add(new Mint
-                {
-                    ContentId = request.ContentId,
-                    ContractName = await _configuration.DefaultContractName,
-                    TemplateId = result.Id,
-                    MetadataHash = HashContent(contentDefinition)
-                });
-
-                chainTransactions.Add(result.TransactionHash);
+                // Create the token template
+                var newTemplateResponse = await _venlyApiService.CreateTokenTemplate(contract.Id, request.ToCreateTokenTypeRequest(blockchainItem));
+                templateId = newTemplateResponse.Id;
             }
             else
             {
                 // Check if content changed and update the token template
                 var metadataHash = HashContent(blockchainItem);
-                if (blockchainItem is not null && existingMint.MetadataHash != metadataHash)
+                if (blockchainItem is not null && lastMint.MetadataHash != metadataHash)
                 {
-                    BeamableLogger.Log("Metadata changed for {content}, updating the token template {t}", request.ContentId, existingMint.TemplateId);
-                    await _venlyApiService.UpdateTokenTemplate(contract.Id, existingMint.TemplateId, request.ToUpdateTokenTypeMetadataRequest(blockchainItem));
-                    updatedMints.Add(new Mint
-                    {
-                        ContractName = contract.Name,
-                        TemplateId = existingMint.TemplateId,
-                        ContentId = request.ContentId,
-                        MetadataHash = metadataHash
-                    });
+                    BeamableLogger.Log("Metadata changed for {content}, updating the token template {t}", request.ContentId, lastMint.TemplateId);
+                    await _venlyApiService.UpdateTokenTemplate(contract.Id, lastMint.TemplateId, request.ToUpdateTokenTypeMetadataRequest(blockchainItem));
                 }
-                // Mint an existing template
-                var mintResponse = await _venlyApiService.Mint(contract.Id, existingMint.TemplateId, new VyMintTokensRequest
-                {
-                    Destinations = new[]
-                    {
-                        new VyTokenDestinationDto
-                        {
-                            Address = toWalletAddress,
-                            Amount = (int)request.Amount
-                        }
-                    }
-                });
-
-                var transactions = mintResponse
-                    .Select(x => x.MintedTokens
-                        .Select(xx => xx.TxHash))
-                    .SelectMany(x => x)
-                    .ToList();
-
-                chainTransactions.AddRange(transactions);
+                templateId = lastMint.TemplateId;
             }
+            
+            // Mint
+            var mintResponse = await _venlyApiService.Mint(contract.Id, templateId, new VyMintTokensRequest
+            {
+                Destinations = new[]
+                {
+                    new VyTokenDestinationDto
+                    {
+                        Address = toWalletAddress,
+                        Amount = (int)request.Amount
+                    }
+                }
+            });
+            
+            newMints.Add(new Mint
+            {
+                TemplateId = templateId,
+                ContentId = request.ContentId,
+                ContractName = contract.Name,
+                MetadataHash = HashContent(blockchainItem),
+                TokenId = mintResponse.First().MintedTokens.First().TokenId
+            });
+
+            var transactions = mintResponse
+                .Select(x => x.MintedTokens
+                    .Select(xx => xx.TxHash))
+                .SelectMany(x => x)
+                .ToList();
+
+            chainTransactions.AddRange(transactions);
         }
 
         if (newMints.Any())
         {
             await _mintCollection.InsertMints(newMints);
-        }
-
-        if (updatedMints.Any())
-        {
-            await _mintCollection.UpdateMints(updatedMints);
         }
 
         if (chainTransactions.Any())

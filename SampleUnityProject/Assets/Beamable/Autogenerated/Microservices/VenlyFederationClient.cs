@@ -32,17 +32,31 @@ namespace Beamable.Server.Clients
         }
         
         /// <summary>
-        /// Call the TransferItem method on the VenlyFederation microservice
-        /// <see cref="Beamable.VenlyFederation.VenlyFederation.TransferItem"/>
+        /// Call the TransferItemToPlayer method on the VenlyFederation microservice
+        /// <see cref="Beamable.VenlyFederation.VenlyFederation.TransferItemToPlayer"/>
         /// </summary>
-        public Beamable.Common.Promise<System.Threading.Tasks.Task> TransferItem(int itemId, long destinationPlayerId)
+        public Beamable.Common.Promise<System.Threading.Tasks.Task> TransferItemToPlayer(int itemId, long destinationPlayerId)
         {
             object raw_itemId = itemId;
             object raw_destinationPlayerId = destinationPlayerId;
             System.Collections.Generic.Dictionary<string, object> serializedFields = new System.Collections.Generic.Dictionary<string, object>();
             serializedFields.Add("itemId", raw_itemId);
             serializedFields.Add("destinationPlayerId", raw_destinationPlayerId);
-            return this.Request<System.Threading.Tasks.Task>("VenlyFederation", "TransferItem", serializedFields);
+            return this.Request<System.Threading.Tasks.Task>("VenlyFederation", "TransferItemToPlayer", serializedFields);
+        }
+        
+        /// <summary>
+        /// Call the TransferItemExternal method on the VenlyFederation microservice
+        /// <see cref="Beamable.VenlyFederation.VenlyFederation.TransferItemExternal"/>
+        /// </summary>
+        public Beamable.Common.Promise<System.Threading.Tasks.Task> TransferItemExternal(int itemId, string destinationWalletAddress)
+        {
+            object raw_itemId = itemId;
+            object raw_destinationWalletAddress = destinationWalletAddress;
+            System.Collections.Generic.Dictionary<string, object> serializedFields = new System.Collections.Generic.Dictionary<string, object>();
+            serializedFields.Add("itemId", raw_itemId);
+            serializedFields.Add("destinationWalletAddress", raw_destinationWalletAddress);
+            return this.Request<System.Threading.Tasks.Task>("VenlyFederation", "TransferItemExternal", serializedFields);
         }
     }
     
@@ -56,6 +70,11 @@ namespace Beamable.Server.Clients
         
         [System.SerializableAttribute()]
         internal sealed class ParameterSystem_Int64 : MicroserviceClientDataWrapper<long>
+        {
+        }
+        
+        [System.SerializableAttribute()]
+        internal sealed class ParameterSystem_String : MicroserviceClientDataWrapper<string>
         {
         }
     }

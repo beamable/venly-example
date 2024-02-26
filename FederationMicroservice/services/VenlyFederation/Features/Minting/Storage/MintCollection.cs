@@ -30,13 +30,13 @@ public class MintCollection : IService
                         Builders<Mint>.IndexKeys
                             .Ascending(x => x.ContractName)
                             .Ascending(x => x.ContentId)
-                            .Ascending(x => x.TemplateId),
+                            .Ascending(x => x.TokenId),
                         new CreateIndexOptions { Unique = true }
                     ),
                     new CreateIndexModel<Mint>(
                         Builders<Mint>.IndexKeys
                             .Ascending(x => x.ContractName)
-                            .Ascending(x => x.TemplateId)
+                            .Ascending(x => x.TokenId)
                             .Ascending(x => x.ContentId),
                         new CreateIndexOptions { Unique = true }
                     )
@@ -47,26 +47,28 @@ public class MintCollection : IService
         return _collection;
     }
 
-    public async Task<ICollection<Mint>> GetMintsForContent(string contractName, IEnumerable<string> contentIds)
+    public async Task<ICollection<Mint>> GetLastMintsForContent(string contractName, IEnumerable<string> contentIds)
     {
         var collection = await Get();
-        var mints = await collection
-            .Find(x => x.ContractName == contractName && contentIds.Contains(x.ContentId))
-            .ToListAsync();
+        
+        var pipeline = collection.Aggregate()
+            .Match(x => x.ContractName == contractName && contentIds.Contains(x.ContentId))
+            .SortBy(x => x.ContentId).SortByDescending(x => x.ID)
+            .Group(x => x.ContentId, g => new
+            {
+                ContentId = g.Key,
+                LastDocument = g.First()
+            })
+            .Project(g => g.LastDocument);
 
-        return mints;
+        return await pipeline.ToListAsync();
     }
 
-    public async Task<ICollection<TokenTemplateMapping>> GetTokenMappingsForTokens(string contractName, IEnumerable<int> tokenIds)
+    public async Task<ICollection<Mint>> GetMintsForTokens(string contractName, IEnumerable<int> tokenIds)
     {
         var collection = await Get();
         var mints = await collection
-            .Find(x => x.ContractName == contractName && tokenIds.Contains(x.TemplateId))
-            .Project(x => new TokenTemplateMapping
-            {
-                ContentId = x.ContentId,
-                TemplateId = x.TemplateId
-            })
+            .Find(x => x.ContractName == contractName && tokenIds.Contains(x.TokenId))
             .ToListAsync();
 
         return mints;

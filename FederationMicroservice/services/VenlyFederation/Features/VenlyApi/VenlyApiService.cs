@@ -126,7 +126,7 @@ public class VenlyApiService : IService
 
         public async Task<VyTokenTypeDto> CreateTokenTemplate(int contractId, VyCreateTokenTypeRequest request)
         {
-            using (new Measure($"Vy.CreateTokenTemplate: {request.Name} -> {string.Join(',', request.Destinations.Select(x => x.Address))}"))
+            using (new Measure($"Vy.CreateTokenTemplate: {request.Name}"))
             {
                 return await VenlyAPI.Nft.CreateTokenType(contractId, request).AwaitResult();
             }

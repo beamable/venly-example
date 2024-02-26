@@ -2,7 +2,9 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Beamable.Common;
+using Beamable.VenlyFederation.Features.Contracts;
 using Beamable.VenlyFederation.Features.Minting;
+using Beamable.VenlyFederation.Features.Minting.Storage;
 using Beamable.VenlyFederation.Features.VenlyApi;
 using Venly.Models.Wallet;
 
@@ -12,11 +14,15 @@ public class WalletService : IService
 {
     private readonly Configuration _configuration;
     private readonly VenlyApiService _venlyApiService;
+    private readonly MintCollection _mintCollection;
+    private readonly ContractService _contractService;
 
-    public WalletService(Configuration configuration, VenlyApiService venlyApiService)
+    public WalletService(Configuration configuration, VenlyApiService venlyApiService, MintCollection mintCollection, ContractService contractService)
     {
         _configuration = configuration;
         _venlyApiService = venlyApiService;
+        _mintCollection = mintCollection;
+        _contractService = contractService;
     }
 
     public async Task<VyWalletDto> GetOrCreateWallet(string playerId)
@@ -41,7 +47,13 @@ public class WalletService : IService
 
     public async Promise<FederatedInventoryProxyState> GetInventoryState(string id)
     {
+        var contract = await _contractService.GetOrCreateDefaultContract();
+        
         var allTokens = (await _venlyApiService.GetTokens(id)).ToList();
+
+        var tokenContentMap = (await _mintCollection.GetMintsForTokens(contract.Name, allTokens.Select(x => int.Parse(x.Id))))
+            .ToDictionary(x => x.TokenId, x => x.ContentId);
+            
         var tokens = allTokens.Where(x => x.Name is not null).ToList();
         if (tokens.Count != allTokens.Count)
         {
@@ -66,7 +78,7 @@ public class WalletService : IService
             }
             else
             {
-                items.Add((token.Name,
+                items.Add((tokenContentMap[int.Parse(token.Id)],
                         new FederatedItemProxy
                         {
                             proxyId = token.Id,
